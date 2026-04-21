@@ -1,18 +1,23 @@
 #!/bin/sh
 MODPATH=${0%/*}
-PATH=$PATH:/data/adb/ap/bin:/data/adb/magisk:/data/adb/ksu/bin
+FRIDA_BIN="$MODPATH/bin/frida-server"
+PATH="$MODPATH/bin:$PATH:/data/adb/ap/bin:/data/adb/magisk:/data/adb/ksu/bin"
 
 # log
 exec 2> $MODPATH/logs/utils.log
 set -x
 
-function check_frida_is_up() {
-    [ ! -z "$1" ] && timeout="$1" || timeout=4
+check_frida_is_up() {
+    if [ -n "$1" ]; then
+        timeout="$1"
+    else
+        timeout=4
+    fi
     counter=0
 
     while [ $counter -lt $timeout ]; do
-        local result="$(busybox pgrep 'frida-server')"
-        if [ $result -gt 0 ]; then
+        result="$(busybox pgrep 'frida-server')"
+        if [ -n "$result" ]; then
             echo "[-] Frida-server is running... 💉😜"
             string="description=Run frida-server on boot: ✅ (active)"
             break
@@ -30,9 +35,20 @@ function check_frida_is_up() {
     sed -i "s/^description=.*/$string/g" $MODPATH/module.prop
 }
 
+start_frida_server() {
+  if [ ! -x "$FRIDA_BIN" ]; then
+    echo "[-] Frida binary not found: $FRIDA_BIN"
+    string="description=Run frida-server on boot: ❌ (missing binary)"
+    sed -i "s/^description=.*/$string/g" $MODPATH/module.prop
+    return 1
+  fi
+
+  "$FRIDA_BIN" -D
+}
+
 wait_for_boot() {
   while true; do
-    local result="$(getprop sys.boot_completed)"
+    result="$(getprop sys.boot_completed)"
     if [ $? -ne 0 ]; then
       exit 1
     elif [ "$result" = "1" ]; then

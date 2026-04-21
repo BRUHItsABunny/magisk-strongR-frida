@@ -6,7 +6,7 @@ PATH=$PATH:/data/adb/ap/bin:/data/adb/magisk:/data/adb/ksu/bin
 exec 2> $MODPATH/logs/action.log
 set -x
 
-. $MODPATH/utils.sh
+. $MODPATH/utils.sh || exit $?
 
 [ -f $MODPATH/disable ] && {
     echo "[-] Frida-server is disable"
@@ -17,12 +17,12 @@ set -x
 }
 
 result="$(busybox pgrep 'frida-server')"
-if [ $result -gt 0 ]; then
+if [ -n "$result" ]; then
     echo "[-] Stopping Frida-server..."
     busybox kill -9 $result
 else
     echo "[-] Starting Frida server..."
-    frida-server -D
+    start_frida_server || exit $?
 fi
 
 sleep 1
